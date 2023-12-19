@@ -1,14 +1,14 @@
 package com.project.blog.repository;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import com.project.blog.model.Post;
 
-import java.util.List;
+public interface PostRepository extends JpaRepository<Post, Long> {
 
+    Page<Post> findByPublished(boolean published, Pageable pageable);
 
-public interface PostRepository extends JpaRepository<Post, Long>{
-
-    List <Post> findByPublished(boolean published);
-    List <Post> findByTitleContaining(String title);
+    Page<Post> findByTitleContaining(String title, Pageable pageable);
 }

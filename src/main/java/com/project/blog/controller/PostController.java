@@ -1,10 +1,15 @@
 package com.project.blog.controller;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -22,60 +27,75 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
-
 @CrossOrigin(origins = "http://localhost:8080")
 @RestController
 @RequestMapping("/api")
 public class PostController {
 
-    @Autowired
-    PostRepository postRepository;
+	@Autowired
+	PostRepository postRepository;
 
-    @GetMapping("/posts")
-    public ResponseEntity<List<Post>> getAllPosts(@RequestParam(required = false) String title) {
-        try {
-            
-            List<Post> posts = new ArrayList<Post>();
+	@GetMapping("/posts")
+	public ResponseEntity<Map<String, Object>> getAllPosts(@RequestParam(required = false) String title,
+			@RequestParam(defaultValue = "0") int page,
+			@RequestParam(defaultValue = "5") int size) {
+		try {
 
-            if (title == null)
-				postRepository.findAll().forEach(posts::add);
-			else
-				postRepository.findByTitleContaining(title).forEach(posts::add);
+			List<Post> posts = new ArrayList<Post>();
+			Pageable paging = PageRequest.of(page, size);
 
-			if (posts.isEmpty()) {
+			Page<Post> postsPaging;
+
+			if (title == null) {
+
+				postsPaging = postRepository.findAll(paging);
+
+			} else {
+				postsPaging = postRepository.findByTitleContaining(title, paging);
+			}
+
+			if (postsPaging.isEmpty()) {
 				return new ResponseEntity<>(HttpStatus.NO_CONTENT);
 			}
 
-            return new ResponseEntity<>(posts, HttpStatus.OK);
+			posts = postsPaging.getContent();
 
-        } catch (Exception e) {
-            return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
-        }
-    }
+			Map<String, Object> response = new HashMap<>();
+			response.put("tutorials", posts);
+			response.put("currentPage", postsPaging.getNumber());
+			response.put("totalItems", postsPaging.getTotalElements());
+			response.put("totalPages", postsPaging.getTotalPages());
 
-    @GetMapping("/posts/{id}")
-    public ResponseEntity<Post> getPostById(@PathVariable("id") long id) {
-        Optional<Post> postData = postRepository.findById(id);
+			return new ResponseEntity<>(response, HttpStatus.OK);
+
+		} catch (Exception e) {
+			return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+	}
+
+	@GetMapping("/posts/{id}")
+	public ResponseEntity<Post> getPostById(@PathVariable("id") long id) {
+		Optional<Post> postData = postRepository.findById(id);
 
 		if (postData.isPresent()) {
-			postData.get().setAccess(postData.get().getAccess()+1);
+			postData.get().setAccess(postData.get().getAccess() + 1);
 			updatePost(id, postData.get());
 			return new ResponseEntity<>(postData.get(), HttpStatus.OK);
 		} else {
 			return new ResponseEntity<>(HttpStatus.NOT_FOUND);
 		}
-    }
-    
-    @PostMapping("/posts")
-    public ResponseEntity<Post> createPost(@RequestBody Post post) {
-        try {
+	}
+
+	@PostMapping("/posts")
+	public ResponseEntity<Post> createPost(@RequestBody Post post) {
+		try {
 			Post _post = postRepository
 					.save(new Post(post.getTitle(), post.getDescription(), true));
 			return new ResponseEntity<>(_post, HttpStatus.CREATED);
 		} catch (Exception e) {
 			return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
 		}
-    }
+	}
 
 	@PutMapping("/posts/{id}")
 	public ResponseEntity<Post> updatePost(@PathVariable("id") long id, @RequestBody Post post) {
@@ -105,7 +125,7 @@ public class PostController {
 		}
 	}
 
-    @DeleteMapping("/posts/{id}")
+	@DeleteMapping("/posts/{id}")
 	public ResponseEntity<HttpStatus> deletePost(@PathVariable("id") long id) {
 		try {
 			postRepository.deleteById(id);
@@ -138,6 +158,6 @@ public class PostController {
 		} catch (Exception e) {
 			return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
 		}
-	}    
+	}
 
 }
