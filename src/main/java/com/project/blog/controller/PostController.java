@@ -146,17 +146,41 @@ public class PostController {
 
 	}
 
-	@GetMapping("/posts/published")
-	public ResponseEntity<List<Post>> findByPublished() {
+	@GetMapping("/posts/published/{published}")
+	public ResponseEntity<Map<String, Object>> findByPublished(@RequestParam(required = true) int published,
+			@RequestParam(defaultValue = "0") int page,
+			@RequestParam(defaultValue = "5") int size) {
 		try {
-			List<Post> posts = postRepository.findByPublished(true);
 
-			if (posts.isEmpty()) {
+			List<Post> posts = new ArrayList<Post>();
+			Pageable paging = PageRequest.of(page, size);
+
+			Page<Post> postsPaging;
+
+			if (published == 0) {
+
+				postsPaging = postRepository.findByPublished(false, paging);
+
+			} else {
+				postsPaging = postRepository.findByPublished(true, paging);
+			}
+
+			if (postsPaging.isEmpty()) {
 				return new ResponseEntity<>(HttpStatus.NO_CONTENT);
 			}
-			return new ResponseEntity<>(posts, HttpStatus.OK);
+
+			posts = postsPaging.getContent();
+
+			Map<String, Object> response = new HashMap<>();
+			response.put("tutorials", posts);
+			response.put("currentPage", postsPaging.getNumber());
+			response.put("totalItems", postsPaging.getTotalElements());
+			response.put("totalPages", postsPaging.getTotalPages());
+
+			return new ResponseEntity<>(response, HttpStatus.OK);
+
 		} catch (Exception e) {
-			return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+			return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 	}
 
